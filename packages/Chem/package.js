@@ -1,6 +1,9 @@
+import { getRGroups } from "./src/rgroup_analysis";
+import { getMCS } from "./src/rgroup_analysis";
 var rdKitModule = null;
 // var rdKitWorkerProxy = null;
 var rdKitWorkerWebRoot = null;
+ 
 
 //name: Chem
 class ChemPackage extends DG.Package {
@@ -388,5 +391,47 @@ class ChemPackage extends DG.Package {
     return [df];
   }
 
+  //name: rGroupsAnalytics
+  //input: column col {semType: 'Molecule'}
+  rGroupsAnalytics(col){
+  let sketcherSmile ='';
+  function onChanged(smiles){
+    sketcherSmile = smiles;
+  }
+
+  let sketcher = grok.chem.sketcher(onChanged, sketcherSmile);
+  console.log(sketcher)
+  let columnPrefixInput = ui.stringInput('Column prefix','R');
+  let visualAnalysisCheck = ui.boolInput('Visual analysis',true);
+
+  let mcsButton = ui.button('MCS', async () =>{
+    let smiles = await getMCS(col);
+    sketcher.remove();
+    sketcherSmile = smiles;
+    sketcher =  grok.chem.sketcher(onChanged, sketcherSmile);
+    mcsButton.insertAdjacentElement('beforebegin',sketcher);
+  });
+
+  let dlg = ui.dialog({title:'R-Group Analysis',helpUrl:'/help/domains/chem/cheminformatics.md#r-group-analysis'})
+  .add(ui.div([sketcher, ui.tooltip.bind(mcsButton,"Most Common Substructure"),columnPrefixInput,visualAnalysisCheck]))
+  .onOK(async() => {
+    let res = await getRGroups(col, sketcherSmile);
+    for(let resCol of res.columns) col.dataFrame.columns.add(resCol);
+    if(res.columns.length == 0) grok.shell.error("None R-Groups were found");
+    let view =null;
+    for(let v of grok.shell.tableViews) {
+      view = v;
+      break;
+    }
+    if(visualAnalysisCheck.value && view) {
+      let plot = view.trellisPlot({x:[res.columns[0].name],y:[res.columns[1].name]});
+      console.log(res.columns[0].name, res.columns[1].name)
+
+    }
+  });
+  dlg.show();
+  dlg.initDefaultHistory();
+
+}
 
 }
