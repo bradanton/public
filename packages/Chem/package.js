@@ -1,3 +1,7 @@
+import * as ui from "../../js-api/ui";
+import {Sketcher} from "../../js-api/src/chem";
+import * as DG from "../../js-api/src/dataframe";
+
 var rdKitModule = null;
 // var rdKitWorkerProxy = null;
 var rdKitWorkerWebRoot = null;
@@ -116,7 +120,7 @@ class ChemPackage extends DG.Package {
       throw e;
     }
   }
-  
+
   //name: getMorganFingerprints
   //input: column molColumn {semType: Molecule}
   //output: column result [fingerprints]
@@ -495,4 +499,228 @@ class ChemPackage extends DG.Package {
   async _testSubstructureSearch() {
     await testSubstructureSearch();
   }
+
+  async chemSimilaritySearch(
+    table,
+    smiles,
+    molecule,
+    metric = 'tanimoto',
+    limit = 10,
+    minScore =  0.7,
+  )  {
+    const options = {
+      'minPath': 1,
+      'maxPath': 7,
+      'fpSize': 2048,
+      'bitsPerHash': 2,
+      'useHs': true,
+      'tgtDensity': 0.0,
+      'minSize': 128,
+
+    };
+    limit = Math.min(limit, smiles.length);
+    const fingerprint = _morganFP(molecule);
+    const fingerprintCol = this.getMorganFingerprints(smiles);
+    const distances = [];
+    let fpSim = _fingerprintSimilarity
+    this.webWorker = false;
+    if(this.webWorker){
+      //todo: implement
+      fpSim = () => throw 'Not Impemented yet';
+
+    }
+    for (let row = 0; row < table.rowCount; row++) {
+      const fp = fingerprintCol[row];
+      distances[row] = fp == null ? 100.0 : fpSim(fingerprint, fp);
+    }
+    function range(end) {
+      return Array(end).fill(0).map((_, idx) => idx)
+    }
+    function compare(i1,i2){
+      if (i1 > i2){
+        return -1;
+      }
+      if (i1 < i2){
+        return 1;
+      }
+      return 0;
+    }
+    const indexes = range(table.rowCount)
+        .filter((idx) => fingerprintCol[idx] != null)
+        .sort(compare);
+    const molsList = [];
+    const scoresList = [];
+    for (let n = 0; n < limit; n++) {
+      const idx = indexes[n];
+      const score = distances[idx];
+      if (score < minScore) {
+        break;
+      }
+      molsList[n] = smiles[idx];
+      scoresList[n] = score;
+    }
+    let mols = DG.Column.fromList(DG.COLUMN_TYPE.STRING,'smiles',molsList);
+    mols.semType = DG.SEMTYPE.MOLECULE;
+    let scores = DG.Column.fromList(DG.COLUMN_TYPE.FLOAT,'score',scoresList);
+    return  DG.DataFrame.fromColumns([mols, scores]);
+  }
+
+
 }
+
+
+class ChemSimilaritySearchCore extends DG.JsViewer{
+  init(){
+    this.helpUrl = '/help/domains/chem/similarity-search.md';
+    this.searchCanvas = null;
+    this.itemsView = DG.VirtualView.create();
+    this.referenceDiv = null;
+    this.molCol = null;
+    this.isEditedFromSketcher = false;
+    this.isClickedFromSelf = false;
+    this.hotSearch = true;
+  }
+  constructor() {
+    super();
+    this.reference = this.string('Reference', '');
+    this.molColumnName = this.string('molColumnName',null);
+    this.drillDown = this.bool('drillDown',false);
+    this.syncWithCurrentRow = this.bool('syncWithCurrentRow',false);
+    this.bindItemsToTableSubs = this.bool('bindItemsToTableSubs',false);
+    this.showValueColumnNames = this.stringList('showValueColumnNames');
+    this.showScore = this.bool('showScore',true);
+  }
+  onTableAttached() {
+    this.init();
+    let sketchButton = ui.button('Sketch', () => {
+      let mol = '';
+      this.isEditedFromSketcher = true;
+      let sketcher = grok.chem.sketcher((_, molfile) => {
+          mol = molfile;
+          if (this.hotSearch) this._search(mol).then();
+        }
+      );
+      let dialog = ui.dialog()
+      .add(sketcher)
+      if(!this.hotSearch){
+        dialog.onOK(() => {
+          this._search(mol).then();
+        });
+      }
+      dialog.show();
+
+
+    });
+    sketchButton.id = 'reference';
+    let rt = $(this.root);
+    this.referenceDiv = ui.divH([ ui.divV([sketchButton])]);
+    rt.append(ui.label('Reference'));
+    rt.append(this.referenceDiv);
+    rt.append(ui.label('Similar structures'));
+    this.itemsView.root.style.flexGrow = '1'
+    rt.append(this.itemsView);
+    this.subs.push(DG.debounce(
+        this.dataFrame.onCurrentRowChanged, 50).subscribe(
+          (_) => {
+            if (this.syncWithCurrentRow && (this.drillDown || !this.isClickedFromSelf) &&
+              !this.isEditedFromSketcher && this.dataFrame.currentRow !== -1)
+              this._search(this.molCol.get(this.dataFrame.currentRow)).then();
+          }
+      )
+    );
+    this.molCol = this.dataFrame.getCol(this.molColumnName);
+    if (this.molCol != null && this.dataFrame.rowCount > 0)
+      this._search(this.molCol.get(Math.max(this.dataFrame.currentRow, 0))).then();
+  }
+  detach() {
+    this.subs.forEach((sub) => sub.unsubscribe());
+  }
+  onPropertyChanged(property) {
+    super.onPropertyChanged(property);
+    this.molCol = this.dataFrame.getCol(this.molColumnName);
+    this._search(this.reference).then();
+    //todo: todo
+  }
+
+  async _search(smiles){
+    if(!this.molCol) return;
+    this.reference = smiles;
+    const mol = rdKitModule.get_mol(smiles);
+    let svg = ui.div();
+    svg.innerHTML = mol.get_svg();
+    if (this.searchCanvas){
+      this.searchCanvas = svg;
+      this.referenceDiv.append(svg);
+    }
+    else{
+      this.referenceDiv.replaceChild(svg,this.searchCanvas);
+    }
+
+    const fingerprint = _morganFP(smiles);
+    const fingerprintCol = this.getMorganFingerprints(this.molCol);
+    const distances = [];
+    let fpSim = _fingerprintSimilarity
+    this.webWorker = false;
+    if(this.webWorker){
+      //todo: implement
+      fpSim = () => throw 'Not Impemented yet';
+
+    }
+    for (let row = 0; row < this.dataFrame.rowCount; row++) {
+      const fp = fingerprintCol[row];
+      distances[row] = fp == null ? 100.0 : fpSim(fingerprint, fp);
+    }
+    function range(end) {
+      return Array(end).fill(0).map((_, idx) => idx)
+    }
+    function compare(i1,i2){
+      if (distances[i1] > distances[i2]){
+        return -1;
+      }
+      if (distances[i1] < distances[i2]){
+        return 1;
+      }
+      return 0;
+    }
+    const indexes = range(this.dataFrame.rowCount)
+    .filter((idx) => fingerprintCol[idx] != null)
+    .sort(compare);
+    function renderMolecule(i){
+      const idx = indexes[i];
+      const smiles = this.molCol.get(idx);
+      const mol = rdKitModule.get_mol(smiles);
+      let svg = ui.div();
+      svg.innerHTML = mol.get_svg();
+      let host = ui.divV([svg]);
+      if (this.showValueColumnNames?.length > 0) {
+        let map = {};
+        if (this.showScore)
+           map = {'Score': distances[idx].toString()};
+        map = new Map([...this.showValueColumnNames.map(cn =>
+          [cn, `${this.dataFrame.get(cn,idx)}`]
+        ), ...map]);
+        host.append(ui.tableFromMap(map));
+      }
+      else if (this.showScore)
+        host.append(ui.divText(distances[idx]).toString());
+      //Todo: how to bind them???
+      // DG.DataFrameViewer.bindElementToRow(host, dataFrame, idx,
+      //   beforeClick: () {
+      //   this.isClickedFromSelf = true;
+      //   if (!this.syncWithCurrentRow)
+      //     itemsView.elements.forEach((i, e) => htmlSetClass(e, 'd4-current', false));
+      // },
+      // afterClick: () => this.isClickedFromSelf = false);
+      return host;
+    }
+    this.itemsView.setData(indexes.length, renderMolecule);
+    // if (this.bindItemsToTableSubs != null)
+    //   for (var sub in bindItemsToTableSubs)
+    //     sub.cancel();
+    // if (look.syncWithCurrentRow)
+    //   bindItemsToTableSubs = itemsView.bindItemsToTable(dataFrame,
+    //     (tableIdx) => indexes.indexOf(tableIdx),
+    //     (listIdx) => indexes[listIdx]);
+  }
+}
+
