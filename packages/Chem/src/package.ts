@@ -18,6 +18,7 @@ import {structure3dWidget} from './widgets/structure3d';
 import {toxicityWidget} from './widgets/toxicity';
 import {OCLCellRenderer} from './ocl_cell_renderer';
 import {getRGroups, getMCS} from "./chem_rgroup_analysis";
+import {GridCellRenderArgs, Property, Widget} from 'datagrok-api/dg';
 
 export let rdKitModule: any = null;
 let rdKitWorkerWebRoot: string | undefined;
@@ -116,7 +117,6 @@ export async function rdkitCellRenderer() {
   //}
 }
 
-/*
 //name: oclCellRenderer
 //tags: cellRenderer, cellRenderer-Molecule
 //meta-cell-renderer-sem-type: Molecule
@@ -124,7 +124,6 @@ export async function rdkitCellRenderer() {
 export async function oclCellRenderer() {
   return new OCLCellRenderer();
 }
-*/
 
 //name: getSimilarities
 //input: column molStringsColumn
@@ -538,5 +537,73 @@ export async function chemSpace(table: DG.DataFrame, molColumn: DG.Column, cycle
     });
   } else {
     throw new Error('Your browser doesn\'t support web workers.');
+  }
+}
+
+//name: showMolecules
+export function showMolecules() {
+  grok.shell.addTableView(grok.data.demo.molecules(100)).addViewer(new MoleculeViewer());
+}
+
+export class MoleculeViewer extends DG.JsViewer {
+  private molColumnName: string;
+  private initialized: boolean;
+
+  constructor() {
+    super();
+
+    // Register properties and define fields initialized to properties' default values
+    // Properties that represent columns should end with the 'ColumnName' postfix
+    this.molColumnName = this.string('molColumnName', 'smiles');
+    this.initialized = false;
+  }
+
+  // Additional chart settings
+  init(): void {
+    this.initialized = true;
+  }
+
+  // Stream subscriptions
+  onTableAttached(): void {
+    this.init();
+
+    if (this.dataFrame) {
+      this.subs.push(DG.debounce(this.dataFrame.selection.onChanged, 50).subscribe((_) => this.render()));
+      this.subs.push(DG.debounce(this.dataFrame.filter.onChanged, 50).subscribe((_) => this.render()));
+      this.subs.push(DG.debounce(ui.onSizeChanged(this.root), 50).subscribe((_) => this.render(false)));
+    }
+
+    this.render();
+  }
+
+  // Cancel subscriptions when the viewer is detached
+  detach() {
+    this.subs.forEach(sub => sub.unsubscribe());
+  }
+
+  onPropertyChanged(property: Property): void {
+    super.onPropertyChanged(property);
+    this.render();
+    // if (this.initialized) {
+    //   if (property.name === 'smiles' &&
+    //       this.dataFrame?.getCol(this.molColumnName).type !== property.propertyType) {
+    //         grok.shell.info('Wrong property type');
+    //         return;
+    //   }
+    //   this.render();
+    // }
+  }
+
+  render(computeData = true): void {
+    if (!this.initialized) {
+      return;
+    }
+    if (this.dataFrame) {
+      // const molCol = this.dataFrame.getCol(this.molColumnName);
+      this.root.appendChild(ui.div([ui.h1('SVG rendering')]));
+      // for (let i = 0; i < molCol.length; ++i) {
+      //   g.append(grok.chem.svgMol(molCol?.get(i)));
+      // }
+    }
   }
 }

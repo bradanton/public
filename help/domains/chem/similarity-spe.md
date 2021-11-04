@@ -1,36 +1,11 @@
-<!-- TITLE: Molecular similarity analysis using Stochastic Proximity Embedding (SPE) -->
+<!-- TITLE: Chem Space -->
 <!-- SUBTITLE: -->
 
-# Molecular similarity analysis using Stochastic Proximity Embedding (SPE)
+# Chem Space
 
-Molecular similarity refers to the similarity of chemical elements, molecules or chemical compounds 
-with respect to either structural or functional qualities, i.e. the effect that the chemical compound 
-has on reaction partners in inorganic or biological settings. Biological effects and thus also 
-similarity of effects are usually quantified using the biological activity of a compound. 
-In general terms, function can be related to the chemical activity of compounds (among others).
+Chemical Space is a feature to represent molecular dataset as a two dimensional map. Similarity of structures is used to calculate the distance on the map between the molecules so molecules with similar structure will be closely located on the map. Use this feature to visualize chemical dataset and identify its chemical classes.
 
-The analysis uses molecular fingerprints calculated using [Molecular Fingerprints](fingerprints.md) dialog 
-and converting cross-similarities into 2D or 3D coordinates using Stochastic Proximity Embedding (SPE) 
-algorithm. 
-
-SPE is a self-organizing algorithm for producing meaningful underlying dimensions from proximity data. 
-It attempts to generate low-dimensional Euclidean embeddings that best preserve the similarities 
-between a set of related molecular similarities.
-
-Similarity between pair of molecules can be estimated by different cores. 
-
-## Available distance metrics
-
-  * Tanimoto
-  * Dice
-  * Cosine
-  * Sokal
-  * Russel
-  * Rogot/Goldberg
-  * Kulczynski
-  * McConnaughey
-  * Asymmetric
-  * Braun/Blanquet
+![Chem Space](../../uploads/gifs/chem-space.gif "Chem Space")
 
 See also:
 
