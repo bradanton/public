@@ -57,7 +57,7 @@ async function _cacheByAction(params: CacheParams, invalidator: (_: CacheParams)
   }
 }
 
-function _morganFP(molString: string, fp_length = 128, fp_radius = 2) {
+export function _morganFP(molString: string, fp_length = 128, fp_radius = 2) {
 
   if (molString.length == 0) {
     console.error(
@@ -99,7 +99,7 @@ function _foldFingerprint(bitsetFp: DG.BitSet, newLength: number) {
   return result;
 }
 
-function _fingerprintSimilarity(bitsetFp1: DG.BitSet, bitsetFp2: DG.BitSet) {
+export function _fingerprintSimilarity(bitsetFp1: DG.BitSet, bitsetFp2: DG.BitSet) {
   const len1 = bitsetFp1.length;
   const len2 = bitsetFp2.length;
   if (len1 < len2)

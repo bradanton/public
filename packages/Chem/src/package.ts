@@ -21,6 +21,7 @@ import {getRGroups, getMCS} from "./chem_rgroup_analysis";
 import {GridCellRenderArgs, Property, Widget} from 'datagrok-api/dg';
 import {_morganFP, _fingerprintSimilarity} from './chem_searches'
 import {MoleculeViewer} from './chem_molecule_viewer'
+import { collapseTextChangeRangesAcrossMultipleVersions } from 'typescript';
 
 export let rdKitModule: any = null;
 let rdKitWorkerWebRoot: string | undefined;
@@ -492,18 +493,11 @@ export function rGroupsAnalytics(df: DG.DataFrame, col: DG.Column) {
 //name: ChemSpace
 //input: dataframe table
 //input: column molColumn {semType: Molecule}
-//input: int cycleNum = 100
-//input: bool allowLongParameters = false
-//output: graphics
-export async function chemSpace(table: DG.DataFrame, molColumn: DG.Column, cycleNum: number, allowLongParameters: number) {
+//output: viewer result
+export async function chemSpace(table: DG.DataFrame, molColumn: DG.Column) {
   const fpColumn = getMorganFingerprints(molColumn);
   if (fpColumn.stats.missingValueCount > 0) {
     throw new Error('Molecule column has a null entry');
-  }
-
-  if (cycleNum * fpColumn.length * 100 >= (1e9) && !allowLongParameters) {
-    throw new Error('The given cycle and step numbers are too high to be runned. \
-    If you want to run it anyway, please check the parameter allowLongParameters');
   }
 
   if (window.Worker) {
@@ -516,7 +510,7 @@ export async function chemSpace(table: DG.DataFrame, molColumn: DG.Column, cycle
     }
 
     myWorker.postMessage([fpColumn.length, fpBuffers,
-      2, null, null, 1.0, 2.0, 0.01, fpColumn.length * 100, cycleNum]);
+      2, null, null, 1.0, 2.0, 0.01, fpColumn.length * 100, 100]);
 
     return new Promise<void>((resolve, reject) => {
       myWorker.onmessage = function(event) {
@@ -549,7 +543,7 @@ export async function chemSpace(table: DG.DataFrame, molColumn: DG.Column, cycle
 //input: string metric = tanimoto
 //input: int limit = 10
 //input: double minScore = 0.7
-export async function chemSimilaritySearch(
+export function chemSimilaritySearch(
   table: DG.DataFrame,
   smiles: DG.Column,
   molecule: string,
@@ -567,17 +561,17 @@ export async function chemSimilaritySearch(
     'minSize': 128,
   };
   limit = Math.min(limit, smiles.length);
-  const fingerprint = _morganFP(molecule);
+  const fingerprint = DG.BitSet.fromString(_morganFP(molecule));
   const fingerprintCol = getMorganFingerprints(smiles);
-  const distances = [];
+  const distances: number[] = [];
 
   let fpSim = _fingerprintSimilarity;
   let webWorker = false;
   if(webWorker){
     //todo: implement
     fpSim = () => {throw new Error('Not Impemented yet')};
-
   }
+
   for (let row = 0; row < fingerprintCol.length; row++) {
     const fp = fingerprintCol.get(row);
     distances[row] = fp == null ? 100.0 : fpSim(fingerprint, fp);
@@ -587,21 +581,22 @@ export async function chemSimilaritySearch(
     return Array(end).fill(0).map((_, idx) => idx)
   }
 
-  function compare(i1: number, i2: number){
-    if (i1 > i2){
+  function compare(i1: number, i2: number) {
+    if (distances[i1] > distances[i2]){
       return -1;
     }
-    if (i1 < i2){
+    if (distances[i1] < distances[i2]){
       return 1;
     }
     return 0;
   }
 
-  const indexes = range(table.rowCount)
+  let indexes = range(table.rowCount)
     .filter((idx) => fingerprintCol.get(idx) != null)
     .sort(compare);
   const molsList = [];
   const scoresList = [];
+  const molsIdxs = [];
 
   for (let n = 0; n < limit; n++) {
     const idx = indexes[n];
@@ -609,13 +604,15 @@ export async function chemSimilaritySearch(
     if (score < minScore) {
       break;
     }
+    molsIdxs[n] = idx;
     molsList[n] = smiles.get(idx);
     scoresList[n] = score;
   }
-  let mols = DG.Column.fromList(DG.COLUMN_TYPE.STRING,'smiles',molsList);
+  const mols = DG.Column.fromList(DG.COLUMN_TYPE.STRING,'smiles',molsList);
   mols.semType = DG.SEMTYPE.MOLECULE;
-  let scores = DG.Column.fromList(DG.COLUMN_TYPE.FLOAT,'score',scoresList);
-  return DG.DataFrame.fromColumns([mols, scores]);
+  const scores = DG.Column.fromList(DG.COLUMN_TYPE.FLOAT,'score',scoresList);
+  const new_indexes = DG.Column.fromList(DG.COLUMN_TYPE.INT,'indexes',molsIdxs);
+  return DG.DataFrame.fromColumns([mols, scores, new_indexes]);
 }
 
 class ChemSimilaritySearchCore extends DG.JsViewer{
@@ -740,7 +737,7 @@ class ChemSimilaritySearchCore extends DG.JsViewer{
       this.referenceDiv.replaceChild(svg,this.searchCanvas);
     }
 
-    const fingerprint = _morganFP(smile);
+    const fingerprint = DG.BitSet.fromString(_morganFP(smile));
     const fingerprintCol = getMorganFingerprints(this.molCol);
     const distances: number[] = [];
     let fpSim = _fingerprintSimilarity
