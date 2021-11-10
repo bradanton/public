@@ -9,6 +9,7 @@ import grapesjs from 'grapesjs'
 import './css/style.scss'
 import pluginHeadline from "./plugins/headline"
 import pluginBasicText from "./plugins/basic-text"
+//import pluginScatterPlot from "./plugins/scatter-plot"
 
 export default class Editor {
     _gjsEditor = null
@@ -17,6 +18,12 @@ export default class Editor {
     constructor(options) {
         options || (options = {})
         this._view = options.view ?? grok.shell.newView('Forms')
+
+        let acc = ui.accordion()
+        acc.addPane('header 1', () => ui.divText('Dynamic content'))
+        acc.addPane('header 2', () => ui.divText('More dynamic content'))
+
+        this._view.toolbox = acc.root
 
         const canvasContainer = this._view.root
         const stylesContainer = ui.panel([], { id: 'styles-container', style: { padding: '0' } })
@@ -57,16 +64,20 @@ export default class Editor {
             plugins: [
                 pluginHeadline,
                 pluginBasicText,
+                //pluginScatterPlot
             ],
             layerManager: {
                 appendTo: layersContainer
+            },
+            selectorManager: {
+                appendTo: stylesContainer
             },
             styleManager: {
                 appendTo: stylesContainer,
                 sectors: [
                     {
                         name: 'General',
-                        open: false,
+                        open: open,
                         buildProps: [
                             'float',
                             'display',
@@ -149,9 +160,7 @@ export default class Editor {
                     }
                 ]
             },
-            selectorManager: {
-                appendTo: stylesContainer
-            },
+
             blockManager: {
                 appendTo: blocksContainer,
             },
