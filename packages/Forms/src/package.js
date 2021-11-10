@@ -7,6 +7,7 @@ import * as DG from 'datagrok-api/dg'
 
 /* Project imports */
 import Editor from './Editor'
+import { FormsViewer } from './forms-viewer'
 
 /* constants */
 export const _package = new DG.Package()
@@ -19,12 +20,20 @@ export function FormsApp() {
   rootEl.setAttribute('id', 'gjs-root')
   rootEl.style.backgroundColor = '#2a2a2a'
 
-  const windows = grok.shell.windows;
-  windows.showToolbox = false;
-  windows.showProperties = true;
-  windows.showHelp = false;
+  const windows = grok.shell.windows
+  windows.showToolbox = false
+  windows.showProperties = true
+  windows.showHelp = false
 
   const editor = new Editor({
     view
   })
+}
+
+//name: FormsViewer
+//description: Creates FormsViewer viewer
+//tags: viewer
+//output: viewer result
+export function _FormsViewer() {
+  return new FormsViewer()
 }
