@@ -9,7 +9,7 @@ import { ILazyLoading } from '../lazy-loading/lazy-loading';
 import { checkMissingDomains } from './utils';
 import { _package } from '../package';
 import { getUniqueValues } from '../data-preparation/utils';
-import { LAB_HI_LIM_N, LAB_LO_LIM_N, LAB_TEST, LAB_VISIT_DAY, LAB_VISIT_NAME, SUBJECT_ID, TREATMENT_ARM } from '../columns-constants';
+import { LAB_DAY, LAB_HI_LIM_N, LAB_LO_LIM_N, LAB_TEST, LAB_VISIT_NAME, SUBJECT_ID, TREATMENT_ARM } from '../columns-constants';
 
 export class LaboratoryView extends DG.ViewBase implements ILazyLoading {
 
@@ -165,9 +165,9 @@ export class LaboratoryView extends DG.ViewBase implements ILazyLoading {
   private labValuesDistributionPlot(dm: DG.DataFrame, lb: DG.DataFrame, selectedlabValue: any, trArm: any) {
     let labValue = selectedlabValue;
     let labValueNumColumn = `${labValue} values`;
-    let disributionDataframe = createLabValuesByVisitDataframe(lb, dm, labValue, trArm, labValueNumColumn, LAB_VISIT_DAY);
+    let disributionDataframe = createLabValuesByVisitDataframe(lb, dm, labValue, trArm, labValueNumColumn, LAB_DAY);
     let disributionBoxPlot = DG.Viewer.boxPlot(disributionDataframe, {
-      category: LAB_VISIT_DAY,
+      category: LAB_DAY,
       value: labValueNumColumn,
     });
     return disributionBoxPlot;

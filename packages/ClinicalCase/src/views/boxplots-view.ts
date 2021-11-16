@@ -4,7 +4,7 @@ import * as ui from "datagrok-api/ui";
 import { study } from "../clinical-study";
 import { addDataFromDmDomain, getUniqueValues } from '../data-preparation/utils';
 import { createBaselineEndpointDataframe } from '../data-preparation/data-preparation';
-import { ETHNIC, LAB_RES_N, LAB_TEST, LAB_VISIT_DAY, LAB_VISIT_NAME, RACE, SEX, SUBJECT_ID, TREATMENT_ARM } from '../columns-constants';
+import { ETHNIC, LAB_DAY, LAB_RES_N, LAB_TEST, LAB_VISIT_NAME, RACE, SEX, SUBJECT_ID, TREATMENT_ARM } from '../columns-constants';
 import { checkMissingDomains, updateDivInnerHTML } from './utils';
 import { ILazyLoading } from '../lazy-loading/lazy-loading';
 import { _package } from '../package';
@@ -63,20 +63,20 @@ export class BoxPlotsView extends DG.ViewBase implements ILazyLoading {
       }
     };
 
-    let minLabVisit = study.domains.lb.getCol(LAB_VISIT_DAY).stats[ 'min' ];
+    let minLabVisit = study.domains.lb.getCol(LAB_DAY).stats[ 'min' ];
     let minVisitName = study.domains.lb
-      .groupBy([ LAB_VISIT_DAY, LAB_VISIT_NAME ])
-      .where(`${LAB_VISIT_DAY} = ${minLabVisit}`)
+      .groupBy([ LAB_DAY, LAB_VISIT_NAME ])
+      .where(`${LAB_DAY} = ${minLabVisit}`)
       .aggregate()
       .get(LAB_VISIT_NAME, 0);
     this.bl = minVisitName;
 
     this.uniqueVisits = Array.from(getUniqueValues(study.domains.lb, LAB_VISIT_NAME));
-    this.labWithDmData = addDataFromDmDomain(study.domains.lb, study.domains.dm, [ SUBJECT_ID, LAB_VISIT_DAY, LAB_VISIT_NAME, LAB_TEST, LAB_RES_N ], [TREATMENT_ARM, SEX, RACE, ETHNIC]);
+    this.labWithDmData = addDataFromDmDomain(study.domains.lb, study.domains.dm, [ SUBJECT_ID, LAB_DAY, LAB_VISIT_NAME, LAB_TEST, LAB_RES_N ], [TREATMENT_ARM, SEX, RACE, ETHNIC]);
     this.uniqueLabValues = Array.from(getUniqueValues(this.labWithDmData, LAB_TEST));
     this.labWithDmData = this.labWithDmData
     .groupBy(this.labWithDmData.columns.names())
-    .where(`${LAB_VISIT_DAY} = ${minLabVisit}`)
+    .where(`${LAB_DAY} = ${minLabVisit}`)
     .aggregate();
     this.getTopPValues(4);
     this.updateBoxPlots(viewerTitle, viewerTitlePValue, this.selectedSplitBy);

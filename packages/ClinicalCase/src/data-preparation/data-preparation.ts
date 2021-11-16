@@ -88,7 +88,7 @@ export function createLabValuesByVisitDataframe(lb: DG.DataFrame, dm: DG.DataFra
   let joined =  grok.data.joinTables(lb, dm, [ SUBJECT_ID ], [ SUBJECT_ID ], [ SUBJECT_ID, LAB_RES_N, LAB_TEST, visitCol ],
   [ TREATMENT_ARM ], DG.JOIN_TYPE.LEFT, false);
   let filtered =  createFilteredDataframe(joined, condition, [ SUBJECT_ID, LAB_RES_N, TREATMENT_ARM, visitCol ], labValueNumCol, LAB_RES_N);
-  filtered.rows.filter((row) => row.visitdy != DG.INT_NULL && row.actarm == treatmentArm);
+  filtered.rows.filter((row) => row[visitCol] != DG.INT_NULL && row[TREATMENT_ARM] == treatmentArm);
   return filtered;
 }
 

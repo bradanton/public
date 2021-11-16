@@ -3,7 +3,7 @@ import * as DG from "datagrok-api/dg";
 import * as ui from "datagrok-api/ui";
 import { study } from "../clinical-study";
 import { addDataFromDmDomain, getUniqueValues, getLabVisitNamesAndDays } from '../data-preparation/utils';
-import { ETHNIC, LAB_RES_N, LAB_TEST, LAB_VISIT_DAY, LAB_VISIT_NAME, RACE, SEX, SUBJECT_ID, TREATMENT_ARM } from '../columns-constants';
+import { ETHNIC, LAB_DAY, LAB_RES_N, LAB_TEST, LAB_VISIT_DAY, LAB_VISIT_NAME, RACE, SEX, SUBJECT_ID, TREATMENT_ARM } from '../columns-constants';
 import { labDynamicComparedToBaseline } from '../data-preparation/data-preparation';
 import { ILazyLoading } from '../lazy-loading/lazy-loading';
 import { checkMissingDomains } from './utils';
@@ -80,7 +80,7 @@ export class TimeProfileView extends DG.ViewBase implements ILazyLoading {
         this.root.className = 'grok-view ui-box';
         this.linechart = DG.Viewer.lineChart(this.laboratoryDataFrame, {
             splitColumnName: this.splitBy[0],
-            xColumnName: LAB_VISIT_DAY,
+            xColumnName: LAB_DAY,
             yColumnNames: [`${this.selectedLabValue} avg(${LAB_RES_N})`],
             whiskersType: 'Med | Q1, Q3'
         });
@@ -118,20 +118,20 @@ export class TimeProfileView extends DG.ViewBase implements ILazyLoading {
 
     private createLaboratoryDataframe() {
         let df = this.filterDataFrameByDays(study.domains.lb.clone());
-        let dfWithArm = addDataFromDmDomain(df, study.domains.dm, [ SUBJECT_ID, LAB_VISIT_DAY, LAB_VISIT_NAME, LAB_TEST, LAB_RES_N ], this.splitBy);
+        let dfWithArm = addDataFromDmDomain(df, study.domains.dm, [ SUBJECT_ID, LAB_DAY, LAB_VISIT_NAME, LAB_TEST, LAB_RES_N ], this.splitBy);
         this.laboratoryDataFrame = this.createPivotedDataframe(dfWithArm, LAB_RES_N);
     }
 
     private createrelativeChangeFromBlDataframe(){
         let df = this.filterDataFrameByDays(study.domains.lb.clone());
         labDynamicComparedToBaseline(df,  this.bl, LAB_VISIT_NAME, 'LAB_DYNAMIC_BL', true);
-        let dfWithArm = addDataFromDmDomain(df, study.domains.dm, [ SUBJECT_ID, LAB_VISIT_DAY, LAB_VISIT_NAME, LAB_TEST, LAB_RES_N ], this.splitBy);
+        let dfWithArm = addDataFromDmDomain(df, study.domains.dm, [ SUBJECT_ID, LAB_DAY, LAB_VISIT_NAME, LAB_TEST, LAB_RES_N ], this.splitBy);
         this.relativeChangeFromBlDataFrame = this.createPivotedDataframe(dfWithArm, LAB_RES_N);
     }
 
     private createPivotedDataframe(df: DG.DataFrame, aggregatedColName: string) {
         return df
-            .groupBy([ SUBJECT_ID, LAB_VISIT_DAY ].concat(this.splitBy))
+            .groupBy([ SUBJECT_ID, LAB_DAY ].concat(this.splitBy))
             .pivot(LAB_TEST)
             .avg(aggregatedColName)
             .aggregate();

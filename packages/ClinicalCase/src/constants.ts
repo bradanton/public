@@ -116,8 +116,7 @@ export const requiredColumnsByView = {
                                 sdtmCols.LAB_HI_LIM_N,
                                 sdtmCols.LAB_LO_LIM_N,
                                 sdtmCols.LAB_RES_N,
-                                sdtmCols.LAB_TEST,
-                                sdtmCols.LAB_VISIT_DAY
+                                sdtmCols.LAB_TEST
                         ]
                 }
         },
@@ -152,7 +151,7 @@ export const requiredColumnsByView = {
                                 sdtmCols.SUBJECT_ID,
                                 sdtmCols.LAB_TEST,
                                 sdtmCols.LAB_VISIT_NAME,
-                                sdtmCols.LAB_VISIT_DAY,
+                                sdtmCols.LAB_DAY,
                                 sdtmCols.LAB_RES_N,
                                 sdtmCols.LAB_LO_LIM_N,
                                 sdtmCols.LAB_HI_LIM_N
@@ -197,7 +196,7 @@ export const requiredColumnsByView = {
                 'lb': {
                         'req': [
                                 sdtmCols.SUBJECT_ID,
-                                sdtmCols.LAB_VISIT_DAY,
+                                sdtmCols.LAB_DAY,
                                 sdtmCols.LAB_VISIT_NAME,
                                 sdtmCols.LAB_RES_N,
                                 sdtmCols.LAB_TEST
@@ -233,6 +232,7 @@ export const requiredColumnsByView = {
                                 sdtmCols.LAB_TEST,
                                 sdtmCols.LAB_VISIT_NAME,
                                 sdtmCols.LAB_VISIT_DAY,
+                                sdtmCols.LAB_DAY,
                                 sdtmCols.LAB_TEST,
                                 sdtmCols.LAB_RES_N 
                         ]
