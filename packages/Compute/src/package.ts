@@ -7,6 +7,7 @@ import {selectOutliersManually} from './outliers-selection';
 import {exportFuncCall} from './export-funccall';
 import {_functionParametersGrid} from './function-views/function-parameters-grid';
 import {ModelCatalogView} from './model-catalog-view';
+import {BehaviorSubject} from 'rxjs';
 
 let initCompleted: boolean = false;
 export const _package = new DG.Package();
@@ -18,18 +19,22 @@ export function test() {
 
 //tags: init, autostart
 export function init() {
-  if (initCompleted)
+  if (initCompleted) {
     return;
+  }
   DG.ObjectHandler.register(new ModelHandler());
   grok.events.onAccordionConstructed.subscribe((acc: DG.Accordion) => {
     const ent = acc.context;
-    if (ent == null)
+    if (ent == null) {
       return;
-    if (ent.type != 'script')
+    }
+    if (ent.type != 'script') {
       return;
-    let restPane = acc.getPane('REST');
-    if (!restPane)
+    }
+    const restPane = acc.getPane('REST');
+    if (!restPane) {
       acc.addPane('REST', () => ui.wait(async () => (await renderRestPanel(ent)).root));
+    }
   });
   initCompleted = true;
 }
@@ -73,6 +78,45 @@ export async function manualOutlierSelectionDialog(inputData: DG.DataFrame) {
 //tags: export
 export function exportToExcel(call: DG.FuncCall) {
   exportFuncCall(call);
+}
+
+//name: testUI
+export function testUI() {
+  const v = grok.shell.newView('list');
+
+  const head = v.root.appendChild(ui.h1('List'));
+
+  const dataSource = [
+    'element 1',
+    'element 2',
+  ];
+
+  const listState = new BehaviorSubject(dataSource);
+
+  listState.subscribe(() => {
+    if (v.root.lastChild && v.root.lastChild !== head) v.root.removeChild(v.root.lastChild);
+    v.root.appendChild(ui.list(dataSource));
+  });
+
+  setTimeout(() => {
+    dataSource.push('new Element');
+    listState.next(dataSource);
+  }, 2000);
+
+  setTimeout(() => {
+    dataSource.push('new Element2');
+    listState.next(dataSource);
+  }, 4000);
+
+  setTimeout(() => {
+    dataSource.push('new Element3');
+    listState.next(dataSource);
+  }, 6000);
+
+  setTimeout(() => {
+    dataSource.pop();
+    listState.next(dataSource);
+  }, 8000);
 }
 
 /* eslint-disable */
